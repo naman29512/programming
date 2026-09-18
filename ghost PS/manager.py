@@ -1,22 +1,26 @@
+# imports
 import tools as tl
 import json
 
 def main():
+    """Core logic for the manager worker ai conversation"""
     FILEPATH = "metrics2.jsonl"
     LIMIT_UP = 20
     LIMIT_DOWN = 30
     solved = False
     MAX_ITER = 20
-    agent1_convo = []
-    agent2_convo = []
+    agent1_convo = []  # will contain the chat history with the specific agent
+    agent2_convo = []  # will contain the chat history with the specific agent
     MAX_CALLS = 5
-    iter = 0
+    loop_count = 0
 
     API_KEY = tl.get_configs("config.jsonl")
     URL_FLASH = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={API_KEY}"
 
     error_logs = tl.get_logs("sandbox2.db", target_ts=tl.find_first_error(FILEPATH)["ts"], limit_up=LIMIT_UP, limit_down=LIMIT_DOWN)
     formatted_error_logs = tl.format_logs(error_logs[0], error_logs[1])
+
+    # the prompt needs to be worked on more with more tests
     agent_1_manager_prompt = f"""
     You are the Lead Orchestration AI (Agent 1). 
     Your strict role is to manage Agent 2 (The Solver). You DO NOT solve the problem yourself.
@@ -64,8 +68,8 @@ def main():
     agent1_convo.append({"role": "user", "parts": [{"text": agent_1_manager_prompt}]})
     agent1_convo.append({"role": "model", "parts": [{"text": reply_agent1_direct}]})
 
-    while (not solved) and iter <= MAX_ITER:
-        try:
+    while (not solved) and loop_count <= MAX_ITER:  # the main loop that holds the conversation between the 2 agents
+        try: # in case the formatting of the msg was incorrect by agent 1
             clean_reply = reply_agent1_direct.strip()
             if clean_reply.startswith("```json"):
                 clean_reply = clean_reply[7:]
@@ -77,7 +81,8 @@ def main():
                 
             clean_reply = clean_reply.strip()
             reply_agent1 = json.loads(clean_reply)
-            
+
+            # prints the conversation in a readable format
             print("\n" + "="*60)
             print("🧠 AGENT 1 (THE MANAGER) - WORKFLOW STATE")
             print("="*60)
@@ -89,7 +94,8 @@ def main():
             print(reply_agent1.get("worker_prompt", "[No prompt generated]"))
             print("="*60 + "\n")
             
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError as e:  # calls agent 1 again and ask it to fix the format
+                # can  be made better by coding some common common errors fixes manually
                 print(f"\n[!] Agent 1 hallucinated bad JSON (Error: {e}). Auto-correcting...")
                 
                 # Tell the AI it messed up and force it to fix the syntax
@@ -113,9 +119,11 @@ def main():
             worker_prompt = reply_agent1.get("worker_prompt", "")
             agent2_reply = tl.agent(API_KEY, URL_FLASH, agent2_convo, worker_prompt)
 
-            agent2_convo.append({"role": "user", "parts": [{"text": worker_prompt}]})
+            # formatting for the chat history
+            agent2_convo.append({"role": "user", "parts": [{"text": worker_prompt}]}) 
             agent2_convo.append({"role": "model", "parts": [{"text": agent2_reply}]})
-            
+
+            # prints the msg in a format readable by user
             print("\n" + "="*60)
             print("🤖 AGENT 2 (THE SOLVER) - ANALYSIS REPORT")
             print("="*60)
@@ -134,7 +142,7 @@ def main():
             3. If Agent 2 hallucinated or provided an incorrect/lazy answer, output "CONTINUE" with a strict new worker_prompt telling it where it failed.
             """
 
-            reply_agent1_direct = tl.agent(API_KEY, URL_FLASH, agent1_convo, eval_prompt)
+            reply_agent1_direct = tl.agent(API_KEY, URL_FLASH, agent1_convo, eval_prompt)  # calls agent 1 again to give it agent 2's reply
 
             agent1_convo.append({"role": "user", "parts": [{"text": eval_prompt}]})
             agent1_convo.append({"role": "model", "parts": [{"text": reply_agent1_direct}]})
@@ -165,7 +173,7 @@ def main():
             agent1_convo.append({"role": "user", "parts": [{"text": sys_update_prompt}]})
             agent1_convo.append({"role": "model", "parts": [{"text": reply_agent1_direct}]})
                 
-        iter += 1
+        loop_count += 1
 
 if __name__ == "__main__":
     main()
