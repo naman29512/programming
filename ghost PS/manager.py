@@ -4,7 +4,7 @@ import json
 
 def main():
     """Core logic for the manager worker ai conversation"""
-    FILEPATH = "metrics2.jsonl"
+    FILEPATH = "metrics.jsonl"
     LIMIT_UP = 20
     LIMIT_DOWN = 30
     solved = False
@@ -17,7 +17,7 @@ def main():
     API_KEY = tl.get_configs("config.jsonl")
     URL_FLASH = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={API_KEY}"
 
-    error_logs = tl.get_logs("sandbox2.db", target_ts=tl.find_first_error(FILEPATH)["ts"], limit_up=LIMIT_UP, limit_down=LIMIT_DOWN)
+    error_logs = tl.get_logs("sandbox.db", target_ts=tl.find_first_error(FILEPATH)["ts"], limit_up=LIMIT_UP, limit_down=LIMIT_DOWN)
     formatted_error_logs = tl.format_logs(error_logs[0], error_logs[1])
 
     # the prompt needs to be worked on more with more tests
@@ -112,8 +112,21 @@ def main():
 
         if reply_agent1["status"] == "RESOLVED":
             solved = True
-            print("\n[SUCCESS] INCIDENT RESOLVED.")
-            print(json.dumps(reply_agent1.get("final_report"), indent=4))
+            report = reply_agent1.get("final_report", {})
+            
+            print("\nFINAL SRE REPORT")
+            
+            print("\nTRIGGER:")
+            print(report.get("trigger", "N/A"))
+            
+            print("\nFAILURE MECHANICS:")
+            print(report.get("mechanics", "N/A"))
+            
+            print("\nRECOMMENDED FIX:")
+            print(report.get("fix", "N/A"))
+            
+            print("\nRAW JSON OUTPUT:")
+            print(json.dumps(report, indent=4))
             
         elif reply_agent1["status"] == "CONTINUE":
             worker_prompt = reply_agent1.get("worker_prompt", "")

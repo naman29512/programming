@@ -39,3 +39,19 @@ Acts as the investigator. It reads the logs the Manager gives it, figures out wh
 * **Context Management:** Right now, this POC passes the whole chat history to keep the AI's memory perfect. If this was scaled up, I would add a sliding-window summary to drop older messages and save on token costs.
 * **Async Execution:** To speed it up for massive databases, a future update would swap standard `urllib` with `asyncio` so the AI can evaluate multiple different logs at the exact same time.
 * **Deployment:** Because there are no external dependencies, it would be extremely easy to package this into a lightweight Docker container for cloud use.
+
+## Testing the Code (Dataset Traps)
+
+The dataset I included (`metrics2.jsonl` and `sandbox2.db`) is intentionally messy. It has a few traps designed to break a basic script and test the AI's logic:
+
+**The Data Traps:**
+1. **The Hidden Root Cause:** The actual trigger for the crash is a database migration logged as a normal `Status: 200` success. A basic script looking for the first `500` error will completely miss this and incorrectly blame the frontend.
+2. **The Error Cascade:** The dataset dumps 25 timeout errors in half a second to hide the real cause and test the time-buffer logic in the Python backend.
+3. **Data Corruption:** I randomly injected broken JSON lines, badly formatted timestamps, and missing keys into the logs to make sure the data parser doesn't crash.
+4. **The Hallucination Trap:** If the AI searches the database for certain services, the system intentionally returns 0 rows. This tests the Manager agent to make sure it stops the Worker from making up fake logs to fill in the gaps.
+
+**Expected Result:**
+When you run `python manager.py`, the AI should successfully navigate these traps and output a final report that generally concludes:
+* **Trigger:** An admin ran a heavy database migration that locked a main table.
+* **Mechanics:** Because the table was locked, other services had to wait in line. The frontend's database connection pool filled up while waiting, which caused all the timeout errors a few seconds later.
+* **Fix:** The AI should suggest doing migrations without locking tables (like using `gh-ost`), scheduling them during low-traffic hours, or setting up better timeout limits on the frontend.
