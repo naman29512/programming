@@ -50,8 +50,10 @@ The dataset I included (`metrics2.jsonl` and `sandbox2.db`) is intentionally mes
 3. **Data Corruption:** I randomly injected broken JSON lines, badly formatted timestamps, and missing keys into the logs to make sure the data parser doesn't crash.
 4. **The Hallucination Trap:** If the AI searches the database for certain services, the system intentionally returns 0 rows. This tests the Manager agent to make sure it stops the Worker from making up fake logs to fill in the gaps.
 
-**Expected Result:**
-When you run `python manager.py`, the AI should successfully navigate these traps and output a final report that generally concludes:
-* **Trigger:** An admin ran a heavy database migration that locked a main table.
-* **Mechanics:** Because the table was locked, other services had to wait in line. The frontend's database connection pool filled up while waiting, which caused all the timeout errors a few seconds later.
-* **Fix:** The AI should suggest doing migrations without locking tables (like using `gh-ost`), scheduling them during low-traffic hours, or setting up better timeout limits on the frontend.
+## Expected Result
+
+When you run `python manager.py`, the AI should successfully navigate the 50,000 lines of background noise, missing entries, and malformed data to output a final report that generally concludes:
+
+* **Trigger:** A new deployment (`v2.4.1`) to the `payments-routing` cluster introduced a critical bug.
+* **Mechanics:** The deployment triggered an infinite retry loop in the routing matrix. This caused the router's memory to spike until it crashed (`OOMKilled`). The dead router caused API gateway connections to pile up, leading to socket exhaustion in the Redis cache, database timeouts, and a thundering-herd panic across all downstream services.
+* **Fix:** The AI should suggest immediately rolling back the `v2.4.1` deployment, implementing circuit breakers to prevent infinite retry loops, and setting strict timeout limits on routing requests.

@@ -4,7 +4,7 @@ import json
 
 def main():
     """Core logic for the manager worker ai conversation"""
-    FILEPATH = "metrics.jsonl"
+    FILEPATH = "sandbox.jsonl"
     LIMIT_UP = 20
     LIMIT_DOWN = 30
     solved = False
@@ -161,7 +161,7 @@ def main():
             agent1_convo.append({"role": "model", "parts": [{"text": reply_agent1_direct}]})
 
         elif reply_agent1["status"] == "DATA_REQUEST":
-            cols, rows = tl.get_logs("sandbox2.db", limit_up=reply_agent1["data_request"]["limit_up"], limit_down=reply_agent1["data_request"]["limit_down"], target_ts=reply_agent1["data_request"]["target_timestamp"], trace_id=reply_agent1["data_request"]["trace_id"], service=reply_agent1["data_request"]["service"], status_code=reply_agent1["data_request"]["status_code"])
+            cols, rows = tl.get_logs("sandbox.db", limit_up=reply_agent1["data_request"]["limit_up"], limit_down=reply_agent1["data_request"]["limit_down"], target_ts=reply_agent1["data_request"]["target_timestamp"], trace_id=reply_agent1["data_request"]["trace_id"], service=reply_agent1["data_request"]["service"], status_code=reply_agent1["data_request"]["status_code"])
             
             if not rows:
                 new_logs = "SYSTEM RETURNED 0 ROWS FOR THOSE FILTERS."
